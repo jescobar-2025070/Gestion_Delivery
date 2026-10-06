@@ -64,7 +64,7 @@ GRANT ALL PRIVILEGES ON fastorder.* TO 'fastorder'@'%';
 ## Compilar y ejecutar
 
 ```bash
-git clone <repo> && cd fastorder
+git clone https://github.com/jescobar-2025070/Gestion_Delivery && cd Gestion_Delivery
 set -a; source .env; set +a
 mvn clean package            # compila los 5 módulos
 

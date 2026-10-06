@@ -53,8 +53,7 @@ public class OrderController {
     public PedidoResponse cancelarPedido(
             @PathVariable Long id,
             @AuthenticationPrincipal AuthenticatedUser user) {
-        boolean esAdmin = "ADMIN".equals(user.role());
-        return orderService.cancelarPedido(id, user.id(), esAdmin);
+        return orderService.cancelarPedido(id, user);
     }
 
     @PatchMapping("/{id}/estado")
@@ -63,7 +62,6 @@ public class OrderController {
             @PathVariable Long id,
             @AuthenticationPrincipal AuthenticatedUser user,
             @Valid @RequestBody CambioEstadoRequest request) {
-        boolean esAdmin = "ADMIN".equals(user.role());
-        return orderService.cambiarEstado(id, user.id(), esAdmin, request);
+        return orderService.cambiarEstado(id, user, request);
     }
 }

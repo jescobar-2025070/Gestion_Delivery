@@ -31,11 +31,13 @@ public class OrderService {
 
     private final PedidoRepository pedidoRepository;
     private final ProductoStockRepository productoStockRepository;
+    private final com.fastorder.common.audit.AuditService auditService;
     private static final BigDecimal COSTO_ENVIO = new BigDecimal("20.00");
 
-    public OrderService(PedidoRepository pedidoRepository, ProductoStockRepository productoStockRepository) {
+    public OrderService(PedidoRepository pedidoRepository, ProductoStockRepository productoStockRepository, com.fastorder.common.audit.AuditService auditService) {
         this.pedidoRepository = pedidoRepository;
         this.productoStockRepository = productoStockRepository;
+        this.auditService = auditService;
     }
 
     @Transactional
@@ -90,19 +92,18 @@ public class OrderService {
     }
 
     @Transactional
-    public PedidoResponse cancelarPedido(Long pedidoId, Long solicitanteId, boolean esAdmin) {
+    public PedidoResponse cancelarPedido(Long pedidoId, com.fastorder.common.security.AuthenticatedUser user) {
+        boolean esAdmin = "ADMIN".equals(user.role());
+        Long solicitanteId = user.id();
         Pedido pedido = pedidoRepository.findById(pedidoId)
                 .orElseThrow(() -> new ResourceNotFoundException("Pedido no encontrado"));
 
-        // CLIENTE solo puede cancelar sus propios pedidos
         if (!esAdmin && !pedido.getClienteId().equals(solicitanteId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No tienes permiso para cancelar este pedido");
         }
 
-        // Solo se puede cancelar en estado PENDIENTE
         EstadoTransicion.validar(pedido.getEstado(), EstadoPedido.CANCELADO);
 
-        // Restaurar stock de todos los productos
         for (DetallePedido detalle : pedido.getDetalles()) {
             productoStockRepository.findByIdForUpdate(detalle.getProductoId())
                     .ifPresent(stock -> {
@@ -113,13 +114,18 @@ public class OrderService {
 
         pedido.setEstado(EstadoPedido.CANCELADO);
         pedido = pedidoRepository.save(pedido);
+        
+        if (esAdmin) {
+            auditService.registrar(user.id(), user.email(), "PEDIDO", pedido.getId(), "CANCELAR_PEDIDO", "Pedido " + pedido.getId() + " cancelado por ADMIN");
+        }
+        
         return mapToResponse(pedido);
     }
 
     @Transactional
-    public PedidoResponse cambiarEstado(Long pedidoId, Long solicitanteId, boolean esAdmin, CambioEstadoRequest request) {
-        // Solo ADMIN y REPARTIDOR pueden cambiar el estado (controlado desde el controller)
-        // Los estados permitidos via este endpoint son: EN_PREPARACION, EN_CAMINO, ENTREGADO
+    public PedidoResponse cambiarEstado(Long pedidoId, com.fastorder.common.security.AuthenticatedUser user, CambioEstadoRequest request) {
+        boolean esAdmin = "ADMIN".equals(user.role());
+        Long solicitanteId = user.id();
         EstadoPedido nuevoEstado = request.estado();
 
         if (nuevoEstado == EstadoPedido.CANCELADO || nuevoEstado == EstadoPedido.PENDIENTE) {
@@ -129,7 +135,6 @@ public class OrderService {
         Pedido pedido = pedidoRepository.findById(pedidoId)
                 .orElseThrow(() -> new ResourceNotFoundException("Pedido no encontrado"));
 
-        // REPARTIDOR solo puede modificar pedidos asignados a él
         if (!esAdmin) {
             if (pedido.getRepartidorId() == null || !pedido.getRepartidorId().equals(solicitanteId)) {
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN,
@@ -139,13 +144,17 @@ public class OrderService {
 
         EstadoTransicion.validar(pedido.getEstado(), nuevoEstado);
 
-        // Si el repartidor toma un pedido (PENDIENTE → EN_PREPARACION), se asigna
         if (pedido.getRepartidorId() == null && !esAdmin) {
             pedido.setRepartidorId(solicitanteId);
         }
 
         pedido.setEstado(nuevoEstado);
         pedido = pedidoRepository.save(pedido);
+        
+        if (esAdmin) {
+            auditService.registrar(user.id(), user.email(), "PEDIDO", pedido.getId(), "CAMBIAR_ESTADO", "Estado de pedido " + pedido.getId() + " cambiado a " + nuevoEstado + " por ADMIN");
+        }
+        
         return mapToResponse(pedido);
     }
 
