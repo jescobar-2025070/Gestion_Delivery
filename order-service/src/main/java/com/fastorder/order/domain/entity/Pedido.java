@@ -26,7 +26,7 @@ import java.util.List;
 @Entity
 @Table(
     name = "pedidos",
-    indices = {
+    indexes = {
         @Index(name = "idx_pedido_cliente_id", columnList = "cliente_id"),
         @Index(name = "idx_pedido_repartidor_id", columnList = "repartidor_id"),
         @Index(name = "idx_pedido_estado", columnList = "estado"),
