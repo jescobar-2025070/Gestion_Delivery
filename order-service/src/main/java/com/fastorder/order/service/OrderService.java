@@ -86,6 +86,7 @@ public class OrderService {
         return mapToResponse(pedido);
     }
 
+    @Transactional
     public Page<PedidoResponse> getMisPedidos(Long clienteId, Pageable pageable) {
         return pedidoRepository.findByClienteId(clienteId, pageable)
                 .map(this::mapToResponse);
