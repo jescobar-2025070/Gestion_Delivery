@@ -41,8 +41,10 @@ public class CatalogController {
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     @ResponseStatus(HttpStatus.CREATED)
-    public ComercioResponse createComercio(@Valid @RequestBody ComercioRequest request) {
-        return catalogService.createComercio(request);
+    public ComercioResponse createComercio(
+            @org.springframework.security.core.annotation.AuthenticationPrincipal com.fastorder.common.security.AuthenticatedUser user,
+            @Valid @RequestBody ComercioRequest request) {
+        return catalogService.createComercio(request, user);
     }
 
     @GetMapping("/{id}/productos")
@@ -57,7 +59,8 @@ public class CatalogController {
     @ResponseStatus(HttpStatus.CREATED)
     public ProductoResponse createProducto(
             @PathVariable Long id,
+            @org.springframework.security.core.annotation.AuthenticationPrincipal com.fastorder.common.security.AuthenticatedUser user,
             @Valid @RequestBody ProductoRequest request) {
-        return catalogService.createProducto(id, request);
+        return catalogService.createProducto(id, request, user);
     }
 }

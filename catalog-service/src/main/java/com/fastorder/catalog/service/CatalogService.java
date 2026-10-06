@@ -19,10 +19,12 @@ public class CatalogService {
 
     private final ComercioRepository comercioRepository;
     private final ProductoRepository productoRepository;
+    private final com.fastorder.common.audit.AuditService auditService;
 
-    public CatalogService(ComercioRepository comercioRepository, ProductoRepository productoRepository) {
+    public CatalogService(ComercioRepository comercioRepository, ProductoRepository productoRepository, com.fastorder.common.audit.AuditService auditService) {
         this.comercioRepository = comercioRepository;
         this.productoRepository = productoRepository;
+        this.auditService = auditService;
     }
 
     public Page<ComercioResponse> getComerciosActivos(Categoria categoria, Pageable pageable) {
@@ -35,7 +37,7 @@ public class CatalogService {
         return comercios.map(this::mapToComercioResponse);
     }
 
-    public ComercioResponse createComercio(ComercioRequest request) {
+    public ComercioResponse createComercio(ComercioRequest request, com.fastorder.common.security.AuthenticatedUser user) {
         Comercio comercio = Comercio.builder()
                 .nombre(request.nombre())
                 .categoria(request.categoria())
@@ -43,6 +45,9 @@ public class CatalogService {
                 .abierto(request.abierto())
                 .build();
         comercio = comercioRepository.save(comercio);
+        
+        auditService.registrar(user.id(), user.email(), "COMERCIO", comercio.getId(), "CREAR_COMERCIO", "Comercio creado: " + comercio.getNombre());
+        
         return mapToComercioResponse(comercio);
     }
 
@@ -54,7 +59,7 @@ public class CatalogService {
         return productos.map(this::mapToProductoResponse);
     }
 
-    public ProductoResponse createProducto(Long comercioId, ProductoRequest request) {
+    public ProductoResponse createProducto(Long comercioId, ProductoRequest request, com.fastorder.common.security.AuthenticatedUser user) {
         Comercio comercio = comercioRepository.findById(comercioId)
                 .orElseThrow(() -> new ResourceNotFoundException("Comercio no encontrado"));
 
@@ -67,6 +72,9 @@ public class CatalogService {
                 .build();
 
         producto = productoRepository.save(producto);
+        
+        auditService.registrar(user.id(), user.email(), "PRODUCTO", producto.getId(), "CREAR_PRODUCTO", "Producto creado: " + producto.getNombre() + " en comercio " + comercio.getId());
+        
         return mapToProductoResponse(producto);
     }
 
