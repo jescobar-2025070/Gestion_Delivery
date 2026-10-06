@@ -16,11 +16,16 @@ spring:
   jpa:
     open-in-view: false
     hibernate:
-      ddl-auto: none
+      ddl-auto: update
     properties:
       hibernate:
         jdbc:
           time_zone: UTC
+  sql:
+    init:
+      mode: always
+      continue-on-error: true
+
 
 server:
   shutdown: graceful
