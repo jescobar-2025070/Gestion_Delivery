@@ -50,8 +50,10 @@ public class DeliveryService {
 
     @Transactional
     public PedidoDeliveryResponse actualizarEstado(Long pedidoId, Long solicitanteId, boolean esAdmin, EstadoPedido nuevoEstado) {
-        if (nuevoEstado == EstadoPedido.CANCELADO || nuevoEstado == EstadoPedido.PENDIENTE) {
-            throw new InvalidStatusException("Transición no permitida desde delivery-service");
+        if (!esAdmin && pedido.getRepartidorId() != null
+                && !pedido.getRepartidorId().equals(solicitanteId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "No tienes permiso para modificar este pedido");
         }
 
         PedidoDelivery pedido = pedidoDeliveryRepository.findById(pedidoId)

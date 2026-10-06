@@ -88,11 +88,14 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGeneralException(Exception ex, HttpServletRequest request) {
+        org.slf4j.LoggerFactory.getLogger(GlobalExceptionHandler.class)
+                .error("Error no manejado en {}: {}", request.getRequestURI(), ex.getMessage(), ex);
+
         ErrorResponse errorResponse = ErrorResponse.builder()
                 .timestamp(Instant.now())
                 .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
                 .error(HttpStatus.INTERNAL_SERVER_ERROR.getReasonPhrase())
-                .message("Error interno del servidor")
+                .message("Error interno del servidor: " + ex.getMessage())
                 .path(request.getRequestURI())
                 .build();
 
