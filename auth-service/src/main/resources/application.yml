@@ -1,0 +1,8 @@
+spring:
+  application:
+    name: auth-service
+  config:
+    import: classpath:fastorder-common.yml
+
+server:
+  port: ${AUTH_SERVICE_PORT:8081}
