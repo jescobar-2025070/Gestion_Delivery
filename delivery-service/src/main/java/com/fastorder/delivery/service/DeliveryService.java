@@ -50,32 +50,34 @@ public class DeliveryService {
 
     @Transactional
     public PedidoDeliveryResponse actualizarEstado(Long pedidoId, Long solicitanteId, boolean esAdmin, EstadoPedido nuevoEstado) {
-        if (nuevoEstado == EstadoPedido.CANCELADO || nuevoEstado == EstadoPedido.PENDIENTE) {
-            throw new InvalidStatusException("Transición no permitida desde delivery-service");
-        }
 
+        // 1. Primero obtenemos el pedido de la base de datos
         PedidoDelivery pedido = pedidoDeliveryRepository.findById(pedidoId)
                 .orElseThrow(() -> new ResourceNotFoundException("Pedido no encontrado"));
 
-        // REPARTIDOR solo puede modificar pedidos asignados a él
+        // 2. Validamos los permisos del repartidor
         if (!esAdmin) {
-            if (pedido.getRepartidorId() == null || !pedido.getRepartidorId().equals(solicitanteId)) {
+            // Si el pedido YA tiene un repartidor asignado, verificamos que sea el mismo que hace la solicitud
+            if (pedido.getRepartidorId() != null && !pedido.getRepartidorId().equals(solicitanteId)) {
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN,
                         "No tienes permiso para modificar este pedido");
             }
+            // Si getRepartidorId() es null, permitimos que continúe para auto-asignarse más adelante
         }
 
+        // 3. Validamos que la transición de estado sea correcta
         validarTransicion(pedido.getEstado(), nuevoEstado);
 
-        // Auto-asignación si repartidor toma pedido sin asignar
-        if (pedido.getRepartidorId() == null && !esAdmin) {
+        // 4. Auto-asignación si un repartidor toma un pedido que aún no tiene repartidor
+        if (!esAdmin && pedido.getRepartidorId() == null) {
             pedido.setRepartidorId(solicitanteId);
         }
 
+        // 5. Aplicamos los cambios y guardamos
         pedido.setEstado(nuevoEstado);
         pedido = pedidoDeliveryRepository.save(pedido);
 
-        // Emitir evento SSE
+        // 6. Emitimos el evento SSE
         sseEmitterManager.emit(pedidoId, new SseEventDto(pedidoId, nuevoEstado, Instant.now()));
 
         return mapToResponse(pedido);
